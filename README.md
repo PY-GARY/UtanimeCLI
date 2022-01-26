@@ -24,7 +24,8 @@ py UtanimeCLI.py
 git clone https://github.com/PY-GARY/UtanimeCLI.git & cd UtanimeCLI & py UtanimeCLI.py
 ```
 ### To download with the executable:
-** Coming Soon **
+
+- https://github.com/PY-GARY/UtanimeCLI/releases/download/1.0.0/UtanimeCLI.exe
 
 ## Linux
 ** Coming Soon **
