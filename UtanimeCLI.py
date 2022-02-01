@@ -1,4 +1,12 @@
 import requests, re, html, os, webbrowser, time
+import wget
+import unicodedata
+
+download_dir = "C:\\Users\\Bastian\Desktop\\dl\\" # TODO create config.ini file and read attributes from it
+
+def strip_accents(s):
+   return ''.join(c for c in unicodedata.normalize('NFD', s)
+                  if unicodedata.category(c) != 'Mn')
 
 class Utanime():
     def __init__(self):
@@ -9,8 +17,10 @@ class Utanime():
         self.episodes_url = []
         a = 1
 
-    def clear(self):
-        os.system('cls')
+    def clear(self): # added multi os support
+        if os.name in ('nt', 'dos'):
+            command = 'cls'
+        os.system(command)
 
     def getNames(self):
         resp = html.unescape(requests.get('https://utanime.me/series').text)
@@ -28,44 +38,64 @@ class Utanime():
         self.names = self.names+names
         names_url = re.findall(r'(https:\/\/utanime\.me\/serie\/.*\/)', resp)
         self.series_url = self.series_url+names_url
-        # print(*self.names, sep = "\n")
 
 
     def getSeasons(self):
         resp = requests.get(self.series_url[self.choice]).text
         season = re.findall(r">T(\d\d)", resp)
         self.seasons = self.seasons+season
-        # print(*self.seasons, sep = "\n")
 
     def getEpisodes(self):
         resp = requests.get(self.series_url[self.choice]).text
-        episode = re.findall(r'mab">(.*)<.*\n.*yellow-co">', resp)
-        self.episode_url = re.findall(r'brd1"> <a href="(.*)\/', resp)
-        self.episodes_url = self.episodes_url+episode
+        episode = re.findall(r'mab">(.*)<\/h2>\n<span class="pdx brd1 dib vat black-bg mar yellow-co">'+str(self.choice2), resp)
+        self.episode_url = resp.split('mab brd1"> <a href="')[1].split('-1')[0]
         self.episodes = self.episodes+episode
-        # print(*self.episodes, sep = "\n")
 
+    def download_file(self,url,local_filename): # download large files
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(local_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192): 
+                    f.write(chunk)
+        return local_filename
+        
     def playEpisode(self):
         s = requests.session()
-        resp = s.get(self.episode_url[self.choice]).text
+        resp = s.get(self.episode_url+'-'+str(self.choice2)+'x'+str(self.choice)).text
         id = re.findall(r'"id" value="(\d*)', resp)
         resp2 = s.get('https://utanime.me/?trembed=0&trid='+id[0]).text.split('" src="https://streamtape.com/e/')[1].split('"')[0]
         r = 'https://stape.fun/e/'+resp2
-        webbrowser.open(r)
-        print(f'\n\tLink: {r}\n')
+        resp = s.get(r)
+        botlink_matcher = '<div id="robotlink" style="display:none;">'
+        botlinkIndex = resp.text.find(botlink_matcher) + len(botlink_matcher)
+        botlink_step1 = resp.text[botlinkIndex:]
+        botlink = 'https:/' + botlink_step1[0:botlink_step1.find('token=')]
+        token_step1 = (botlink_step1[botlink_step1.find('</div>'):])
+        token_step2 = token_step1[token_step1.find("token="):]
+        token_antibot = token_step2[6:token_step2.find("'")]
+        botlink = botlink + 'token=' + token_antibot
+        webbrowser.open(botlink)
 
-    def final(self):
-        os.system('pause')
-        ut.clear()
-        choice = input('Did u want to return to the main menu ? (y/n): ')
-        if choice == 'y':
-            ut.main()
-        elif choice == 'n':
-            os.system('exit')
-        else:
-            print('Error...')
-            time.sleep(3)
-            os.system('exit')
+    def dlEpisode(self): # TODO multithreader
+        s = requests.session()
+        resp = s.get(self.episode_url+'-'+str(self.choice2)+'x'+str(self.choice)).text
+        id = re.findall(r'"id" value="(\d*)', resp)
+        resp2 = s.get('https://utanime.me/?trembed=0&trid='+id[0]).text.split('" src="https://streamtape.com/e/')[1].split('"')[0]
+        r = 'https://stape.fun/e/'+resp2
+        resp = s.get(r)
+        botlink_matcher = '<div id="robotlink" style="display:none;">'
+        botlinkIndex = resp.text.find(botlink_matcher) + len(botlink_matcher)
+        botlink_step1 = resp.text[botlinkIndex:]
+        botlink = 'https:/' + botlink_step1[0:botlink_step1.find('token=')]
+        token_step1 = (botlink_step1[botlink_step1.find('</div>'):])
+        token_step2 = token_step1[token_step1.find("token="):]
+        token_antibot = token_step2[6:token_step2.find("'")]
+        botlink = botlink + 'token=' + token_antibot
+        print('[+] downloading '+ botlink +' ...');
+        print('[*] it may take a time, please wait');
+        file = s.get(botlink)
+        open(download_dir+strip_accents(str(self.episodes[self.choice]).replace(" ","_"))+'.mp4', 'wb').write(file.content)
+        print('[+] done')
 
     def main(self):
         ut.__init__()
@@ -73,20 +103,25 @@ class Utanime():
         ut.getNames()
         ut.clear()
         for i in self.names:
-            print(self.names.index(i) +1, end=' - '+ i + '\n')
+            print(str(self.names.index(i) +1) + ' - '+ i)
         self.choice = int(input('\n=> '))-1
         ut.clear()
         ut.getSeasons()
         for i in self.seasons:
             print(i.strip('0')+' - Season '+i)
-        self.choice = int(input('\n=> '))-1
+        self.choice2 = int(input('\n=> '))
         ut.clear()
         ut.getEpisodes()
         for i in self.episodes:
-            print(self.episodes.index(i) +1, end=' - '+ i + '\n')
-        self.choice = int(input('\n=> '))-1
-        ut.playEpisode()
-        ut.final()
+            print(str(self.episodes.index(i) +1) + ' - '+ i)
+        self.choice = int(input('\n=> '))
+        dlOrPlay = input("Did you want to download (dl) or play (play) ? : ")
+        if(dlOrPlay == 'dl'):
+            ut.dlEpisode()
+        elif(dlOrPlay == 'play'):
+            ut.playEpisode()
+        else:
+            os.system('exit')
 
 
 if __name__ == '__main__':
