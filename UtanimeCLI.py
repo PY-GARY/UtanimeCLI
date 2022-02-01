@@ -1,5 +1,4 @@
-import requests, re, html, os, webbrowser, time
-import wget
+import requests, re, html, os, webbrowser
 import unicodedata
 
 download_dir = os.getcwd() # TODO create config.ini file and read attributes from it
