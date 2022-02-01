@@ -2,7 +2,7 @@ import requests, re, html, os, webbrowser, time
 import wget
 import unicodedata
 
-download_dir = "C:\\Users\\Bastian\Desktop\\dl\\" # TODO create config.ini file and read attributes from it
+download_dir = os.getcwd() # TODO create config.ini file and read attributes from it
 
 def strip_accents(s):
    return ''.join(c for c in unicodedata.normalize('NFD', s)
